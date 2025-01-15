@@ -19,4 +19,8 @@ public interface INetdiskFileService extends IService<NetdiskFile> {
 
     String uploadFile(MultipartFile file) throws IOException;
     Boolean checkFileExist(InputStream file) throws IOException;
+
+    NetdiskFile getNetdiskFileByMd5(String fileMd5);
+
+    boolean checkFileMD5Exist(String fileMd5);
 }

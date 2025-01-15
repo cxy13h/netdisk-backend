@@ -1,0 +1,20 @@
+minio:
+    accessKey: minioadmin
+    bucket: netdisk
+    endpoint: http://localhost:9000
+    secretKey: minioadmin
+spring:
+    application:
+        name: netdisk
+    datasource:
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        password: 2120516678
+        url: jdbc:mysql://localhost:3306/netdisk?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=UTC
+        username: root
+    data:
+        redis:
+            host: localhost
+            port: 6379
+            database: 0
+            timeout: 6000ms
+
