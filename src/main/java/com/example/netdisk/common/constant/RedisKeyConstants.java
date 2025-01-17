@@ -3,16 +3,16 @@ package com.example.netdisk.common.constant;
 public class RedisKeyConstants {
 
     // Redis Key 前缀
-    public static final String PREFIX_UPLOAD = "upload";
+    public static final String UPLOAD = "upload";
 
     // 分片已上传状态的后缀
-    public static final String SUFFIX_UPLOADED_CHUNKS = "uploadedChunks";
+    public static final String UPLOADED_CHUNKS = "uploadedChunks";
 
-    // 文件总分片数的后缀
-    public static final String SUFFIX_TOTAL_CHUNKS = "totalChunks";
+    // 分片的后缀
+    public static final String CHUNK = "chunk";
 
-    // 分片锁的后缀模板
-    public static final String SUFFIX_CHUNK_LOCK = "chunk:%s";
+    // 合并任务的后缀
+    public static final String MERGE = "merge";
 
     // Redis Key 分隔符
     public static final String SEPARATOR = ":";
@@ -26,3 +26,4 @@ public class RedisKeyConstants {
         return String.join(SEPARATOR, parts);
     }
 }
+

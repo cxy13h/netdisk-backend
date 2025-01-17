@@ -1,5 +1,6 @@
 package com.example.netdisk.consumer;
 
+import com.example.netdisk.common.constant.RedisKeyConstants;
 import com.example.netdisk.manager.RedisManager;
 import com.example.netdisk.service.MinioService;
 import com.example.netdisk.service.TaskCoordinatorService;
@@ -8,7 +9,6 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -30,15 +30,15 @@ public class FileUploadConsumer {
     @RabbitListener(queues = "${mq.chunk.queue}")
     public void handleChunkUploadTask(Map<String, Object> message) {
         String fileMd5 = (String) message.get("fileMd5");
-        String chunkMd5 = (String) message.get("chunkMd5");
-        int totalChunks = (Integer) message.get("totalChunks");
+        int chunkIndex = (int) message.get("chunkIndex");
+        int totalChunks = (int) message.get("totalChunks");
         // 锁的 Key 和 Value
-        String lockKey = "chunk:lock:" + chunkMd5;
+        String lockKey = RedisKeyConstants.buildKey(RedisKeyConstants.UPLOAD, fileMd5, RedisKeyConstants.CHUNK, String.valueOf(chunkIndex));
         String lockValue = UUID.randomUUID().toString();
 
         // 尝试获取锁
         if (!redisManager.tryLock(lockKey, lockValue, 5, TimeUnit.MINUTES)) {
-            System.out.println("Chunk is already being processed by another consumer: " + chunkMd5);
+            System.out.println("Chunk is already being processed by another consumer: " + chunkIndex);
             return; // 无法获取锁，跳过
         }
 
@@ -47,10 +47,10 @@ public class FileUploadConsumer {
             byte[] chunkData = (byte[]) message.get("chunkData");
 
             // 存储分片内容到 Redis
-            redisManager.storeChunk(fileMd5, chunkMd5, chunkData);
+            redisManager.storeChunk(fileMd5, chunkIndex, chunkData);
 
             // 标记分片为已上传
-            redisManager.markChunkUploaded(fileMd5, chunkMd5);
+            redisManager.markChunkUploaded(fileMd5, chunkIndex);
 
             // 通知任务协调服务
             taskCoordinatorService.reportChunkUploaded(fileMd5, totalChunks);
@@ -72,33 +72,35 @@ public class FileUploadConsumer {
         int totalChunks = (int) message.get("totalChunks");
 
         try {
-            // 合并文件并上传到 MinIO
-            mergeAndUploadFile(fileMd5, totalChunks);
+            // 合并分片
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+
+            for (int i = 1; i <= totalChunks; i++) {
+                byte[] chunkData = redisManager.getChunkData(fileMd5, i);
+
+                if (chunkData == null) {
+                    throw new IllegalStateException("Missing chunk " + i + " for fileMd5 " + fileMd5);
+                }
+
+                outputStream.write(chunkData);
+            }
+
+            byte[] completeFile = outputStream.toByteArray();
+
+            // 上传合并后的文件到 MinIO
+            String fileId = minioService.uploadFile(completeFile);
+
+            // 清理 Redis 数据
+            redisManager.clearChunks(fileMd5, totalChunks);
+
+//            // 记录文件上传状态到数据库
+//            fileService.saveFileRecord(fileMd5, fileId, completeFile.length);
+
+            System.out.println("File merged and uploaded successfully with fileId=" + fileId);
+
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    /**
-     * 合并文件并上传到 MinIO
-     */
-    private void mergeAndUploadFile(String fileMd5, int totalChunks) throws Exception {
-        // 从 Redis 获取所有分片数据
-        Map<String, byte[]> chunks = redisManager.getAllChunks(fileMd5);
-
-        // 合并分片数据
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        for (byte[] chunk : chunks.values()) {
-            outputStream.write(chunk);
-        }
-
-        // 上传合并后的文件到 MinIO
-        byte[] completeFile = outputStream.toByteArray();
-        String fileId = minioService.uploadFile(completeFile);
-
-        // 清理 Redis 数据
-        redisManager.clearChunks(fileMd5);
-
-        System.out.println("File merged and uploaded to MinIO with ID: " + fileId);
-    }
 }

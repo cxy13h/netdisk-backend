@@ -22,5 +22,5 @@ public interface INetdiskFileService extends IService<NetdiskFile> {
 
     boolean checkFileMD5Exist(String fileMd5);
 
-    void processChunkUpload(String fileMd5, String chunkMd5, int totalChunks, MultipartFile file);
+    void processChunkUpload(String fileMd5, int chunkIndex, int totalChunks, MultipartFile file);
 }

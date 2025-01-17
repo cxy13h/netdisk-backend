@@ -40,11 +40,13 @@ public class NetdiskFileController {
     @PostMapping("/chunk")
     public ResponseEntity<String> uploadChunk(
             @RequestParam("fileMd5") String fileMd5,
-            @RequestParam("chunkMd5") String chunkMd5,
+            @RequestParam("chunkIndex") int chunkIndex,
             @RequestParam("totalChunks") int totalChunks,
             @RequestParam("file") MultipartFile file) {
+        if(iNetdiskFileService.checkFileMD5Exist(fileMd5))
+            return ResponseEntity.ok("File already uploaded.");
         try {
-            iNetdiskFileService.processChunkUpload(fileMd5, chunkMd5, totalChunks, file);
+            iNetdiskFileService.processChunkUpload(fileMd5, chunkIndex, totalChunks, file);
             return ResponseEntity.ok("Chunk upload task submitted.");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());

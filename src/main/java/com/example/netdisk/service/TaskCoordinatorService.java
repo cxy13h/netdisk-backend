@@ -1,5 +1,6 @@
 package com.example.netdisk.service;
 
+import com.example.netdisk.common.constant.RedisKeyConstants;
 import com.example.netdisk.manager.RedisManager;
 import com.example.netdisk.producer.FileUploadProducer;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,20 +25,16 @@ public class TaskCoordinatorService {
         long uploadedChunks = redisManager.getUploadedChunkCount(fileMd5);
 
         if (uploadedChunks == totalChunks) {
-            // 尝试获取 Redis 锁，确保合并任务唯一
-            String lockKey = "merge:lock:" + fileMd5;
+            String lockKey = RedisKeyConstants.buildKey(RedisKeyConstants.UPLOAD, RedisKeyConstants.MERGE, fileMd5);
             String lockValue = UUID.randomUUID().toString();
 
+            // 尝试获取锁，确保只有一个合并任务执行
             if (redisManager.tryLock(lockKey, lockValue, 10, TimeUnit.MINUTES)) {
                 try {
-                    // 所有分片已上传，发布合并任务
                     fileUploadProducer.publishMergeTask(fileMd5, totalChunks);
-                    System.out.println("All chunks uploaded. File merge task published: fileMd5=" + fileMd5);
                 } finally {
-                    redisManager.unlock(lockKey, lockValue); // 释放锁
+                    redisManager.unlock(lockKey, lockValue);
                 }
-            } else {
-                System.out.println("Merge task already in progress for fileMd5=" + fileMd5);
             }
         }
     }

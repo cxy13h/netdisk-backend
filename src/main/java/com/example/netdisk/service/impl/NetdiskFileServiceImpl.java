@@ -36,23 +36,15 @@ public class NetdiskFileServiceImpl extends ServiceImpl<NetdiskFileMapper, Netdi
     /**
      * 处理分片上传逻辑
      */
-    public void processChunkUpload(String fileMd5, String chunkMd5, int totalChunks, MultipartFile file) {
+    public void processChunkUpload(String fileMd5, int chunkIndex, int totalChunks, MultipartFile file) {
         // 检查分片是否已经上传
-        if (redisManager.isChunkUploaded(fileMd5, chunkMd5)) {
+        if (redisManager.isChunkUploaded(fileMd5, chunkIndex)) {
             throw new IllegalArgumentException("Chunk already uploaded.");
         }
 
         // 发布分片上传任务到消息队列
-        fileUploadProducer.publishChunkUploadTask(fileMd5, chunkMd5, totalChunks, file);
+        fileUploadProducer.publishChunkUploadTask(fileMd5, chunkIndex, totalChunks, file);
 
-        // 标记分片为已上传
-        redisManager.markChunkUploaded(fileMd5, chunkMd5);
-
-        // 检查是否所有分片都已上传
-        if (redisManager.getUploadedChunkCount(fileMd5) == totalChunks) {
-            // 发布文件合并任务到消息队列
-            fileUploadProducer.publishMergeTask(fileMd5, totalChunks);
-        }
     }
 
     @Override

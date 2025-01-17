@@ -24,10 +24,10 @@ public class FileUploadProducer {
     /**
      * 发布分片上传任务到队列
      */
-    public void publishChunkUploadTask(String fileMd5, String chunkMd5, int totalChunks, MultipartFile file) {
+    public void publishChunkUploadTask(String fileMd5, int chunkIndex, int totalChunks, MultipartFile file) {
         Map<String, Object> message = new HashMap<>();
         message.put("fileMd5", fileMd5);
-        message.put("chunkMd5", chunkMd5);
+        message.put("chunkIndex", chunkIndex);
         message.put("totalChunks", totalChunks);
         try {
             // 将分片数据转为字节数组
