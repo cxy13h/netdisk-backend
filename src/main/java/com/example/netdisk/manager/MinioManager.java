@@ -1,4 +1,4 @@
-package com.example.netdisk.utils;
+package com.example.netdisk.manager;
 
 import io.minio.GetObjectArgs;
 import io.minio.MinioClient;
@@ -15,7 +15,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 
 @Component
-public class MinioUtils {
+public class MinioManager {
     @Autowired
     private MinioClient minioClient;
 

@@ -17,4 +17,19 @@ spring:
             port: 6379
             database: 0
             timeout: 6000ms
+    rabbitmq:
+        host: localhost
+        port: 5672
+        username: guest
+        password: guest
+        listener:
+            simple:
+                concurrency: 5          # 默认并发消费者数量
+                max-concurrency: 10     # 最大并发消费者数量
+                prefetch: 1             # 每次处理消息数
 
+mq:
+    chunk:
+        queue: chunk-upload-queue
+    merge:
+        queue: file-merge-queue

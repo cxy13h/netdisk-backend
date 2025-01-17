@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.example.netdisk.entity.NetdiskFile;
 import com.example.netdisk.dao.NetdiskFileMapper;
+import com.example.netdisk.manager.RedisManager;
+import com.example.netdisk.producer.FileUploadProducer;
 import com.example.netdisk.service.INetdiskFileService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.netdisk.utils.FileUtils;
@@ -25,21 +27,32 @@ import java.io.InputStream;
 @Service
 public class NetdiskFileServiceImpl extends ServiceImpl<NetdiskFileMapper, NetdiskFile> implements INetdiskFileService {
 
+    @Autowired
+    private RedisManager redisManager;
 
-    @Override
-    public String uploadFile(MultipartFile file) throws IOException {
-        InputStream inputStream = file.getInputStream();
-        if(checkFileExist(inputStream)){
-            return "文件已存在，直接上传成功！";
+    @Autowired
+    private FileUploadProducer fileUploadProducer;
+
+    /**
+     * 处理分片上传逻辑
+     */
+    public void processChunkUpload(String fileMd5, String chunkMd5, int totalChunks, MultipartFile file) {
+        // 检查分片是否已经上传
+        if (redisManager.isChunkUploaded(fileMd5, chunkMd5)) {
+            throw new IllegalArgumentException("Chunk already uploaded.");
         }
 
-        return null;
-    }
+        // 发布分片上传任务到消息队列
+        fileUploadProducer.publishChunkUploadTask(fileMd5, chunkMd5, totalChunks, file);
 
-    @Override
-    public Boolean checkFileExist(InputStream file) throws IOException {
-        String MD5 = FileUtils.getMD5(file);
-        return null;
+        // 标记分片为已上传
+        redisManager.markChunkUploaded(fileMd5, chunkMd5);
+
+        // 检查是否所有分片都已上传
+        if (redisManager.getUploadedChunkCount(fileMd5) == totalChunks) {
+            // 发布文件合并任务到消息队列
+            fileUploadProducer.publishMergeTask(fileMd5, totalChunks);
+        }
     }
 
     @Override
