@@ -53,7 +53,7 @@ public class RedisManager {
      */
     public boolean isChunkUploaded(String fileMd5, int chunkIndex) {
         String key = RedisKeyConstants.buildKey(RedisKeyConstants.UPLOAD, fileMd5, RedisKeyConstants.UPLOADED_CHUNKS);
-        return Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(key, chunkIndex));
+        return Boolean.TRUE.                        equals(redisTemplate.opsForSet().isMember(key, chunkIndex));
     }
 
     /**

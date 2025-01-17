@@ -1,14 +1,12 @@
 package com.example.netdisk.config;
 
-import org.springframework.amqp.core.Binding;
-import org.springframework.amqp.core.BindingBuilder;
-import org.springframework.amqp.core.DirectExchange;
-import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,75 +14,89 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
-    // 队列名称
-    @Value("${mq.upload.queue}")
-    private String uploadQueueName;
+    // 从配置文件读取队列名称
+    @Value("${mq.chunk.queue}")
+    private String chunkUploadQueue;
 
-    // 交换机名称
-    @Value("${mq.upload.exchange}")
-    private String uploadExchangeName;
+    @Value("${mq.merge.queue}")
+    private String fileMergeQueue;
 
-    // 路由键
-    @Value("${mq.upload.routingKey}")
-    private String uploadRoutingKey;
+    // 定义交换机名称
+    public static final String DIRECT_EXCHANGE = "upload.direct.exchange";
+
+    // 定义路由键
+    public static final String CHUNK_ROUTING_KEY = "chunk.routing.key";
+    public static final String MERGE_ROUTING_KEY = "merge.routing.key";
 
     /**
-     * 定义上传队列
+     * 定义分片上传队列
      */
     @Bean
-    public Queue uploadQueue() {
-        return new Queue(uploadQueueName, true); // true 表示队列持久化
+    public Queue chunkUploadQueue() {
+        return QueueBuilder.durable(chunkUploadQueue).build(); // 持久化队列
     }
 
     /**
-     * 定义上传交换机
+     * 定义文件合并队列
      */
     @Bean
-    public DirectExchange uploadExchange() {
-        return new DirectExchange(uploadExchangeName, true, false); // 持久化，非自动删除
+    public Queue fileMergeQueue() {
+        return QueueBuilder.durable(fileMergeQueue).build(); // 持久化队列
     }
 
     /**
-     * 定义队列和交换机的绑定关系
+     * 定义直连交换机
      */
     @Bean
-    public Binding uploadBinding(Queue uploadQueue, DirectExchange uploadExchange) {
-        return BindingBuilder.bind(uploadQueue).to(uploadExchange).with(uploadRoutingKey);
+    public DirectExchange directExchange() {
+        return new DirectExchange(DIRECT_EXCHANGE, true, false); // 持久化，非自动删除
     }
 
     /**
-     * 配置 RabbitMQ 连接工厂
+     * 分片上传队列绑定到直连交换机
      */
     @Bean
-    public ConnectionFactory connectionFactory() {
-        CachingConnectionFactory factory = new CachingConnectionFactory();
-        factory.setHost("localhost"); // RabbitMQ 服务地址
-        factory.setPort(5672); // 默认端口
-        factory.setUsername("guest"); // 默认用户名
-        factory.setPassword("guest"); // 默认密码
-        return factory;
+    public Binding chunkQueueBinding(Queue chunkUploadQueue, DirectExchange directExchange) {
+        return BindingBuilder.bind(chunkUploadQueue).to(directExchange).with(CHUNK_ROUTING_KEY);
     }
 
     /**
-     * 配置 RabbitTemplate（用于消息发送）
+     * 文件合并队列绑定到直连交换机
+     */
+    @Bean
+    public Binding mergeQueueBinding(Queue fileMergeQueue, DirectExchange directExchange) {
+        return BindingBuilder.bind(fileMergeQueue).to(directExchange).with(MERGE_ROUTING_KEY);
+    }
+
+    /**
+     * 消息转换器，使用 JSON 序列化
+     */
+    @Bean
+    public MessageConverter messageConverter() {
+        return new Jackson2JsonMessageConverter();
+    }
+
+    /**
+     * 自定义 RabbitTemplate，设置消息转换器
      */
     @Bean
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
         RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
-        rabbitTemplate.setMessageConverter(new Jackson2JsonMessageConverter()); // 使用 JSON 消息转换器
+        rabbitTemplate.setMessageConverter(messageConverter());
         return rabbitTemplate;
     }
 
     /**
-     * 配置监听器容器工厂（用于消费者监听）
+     * 配置消息监听容器工厂，支持自定义并发消费者数量和预取数量
      */
     @Bean
     public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(ConnectionFactory connectionFactory) {
         SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
         factory.setConnectionFactory(connectionFactory);
-        factory.setMessageConverter(new Jackson2JsonMessageConverter()); // 使用 JSON 消息转换器
-        factory.setConcurrentConsumers(5); // 设置并发消费者数量
-        factory.setMaxConcurrentConsumers(10); // 设置最大并发消费者数量
+        factory.setMessageConverter(messageConverter());
+        factory.setConcurrentConsumers(5); // 默认并发消费者数量
+        factory.setMaxConcurrentConsumers(10); // 最大并发消费者数量
+        factory.setPrefetchCount(1); // 每次只预取 1 条消息
         return factory;
     }
 }
