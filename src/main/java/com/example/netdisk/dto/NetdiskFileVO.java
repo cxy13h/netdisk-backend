@@ -6,7 +6,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-public class NetdiskFileInfo {
+public class NetdiskFileVO {
 
     private String fileId;
 
