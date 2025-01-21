@@ -1,5 +1,6 @@
 package com.example.netdisk.dto;
 
+import com.example.netdisk.common.constant.FileKeyConstants;
 import lombok.Data;
 
 import java.util.ArrayList;
@@ -20,6 +21,7 @@ public class TreeNodeVO {
         this.id = id;
         this.type = type;
         this.name = name;
-        this.children = new ArrayList<>();
+        if(FileKeyConstants.DIRECTORY.equals(type))
+            this.children = new ArrayList<>();
     }
 }

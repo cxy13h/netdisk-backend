@@ -9,6 +9,7 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -24,6 +25,7 @@ public class FileUploadConsumer {
 
     @Autowired
     MinioService minioService;
+
     /**
      * 处理分片上传任务
      */
@@ -44,7 +46,8 @@ public class FileUploadConsumer {
 
         try {
             // 获取分片数据
-            byte[] chunkData = (byte[]) message.get("chunkData");
+            String chunkDataBase64 = (String) message.get("chunkData");
+            byte[] chunkData = Base64.getDecoder().decode(chunkDataBase64);
 
             // 存储分片内容到 Redis
             redisManager.storeChunk(fileMd5, chunkIndex, chunkData);
@@ -94,7 +97,7 @@ public class FileUploadConsumer {
             redisManager.clearChunks(fileMd5, totalChunks);
 
 //            // 记录文件上传状态到数据库
-//            fileService.saveFileRecord(fileMd5, fileId, completeFile.length);
+            taskCoordinatorService.reportSaveFileRecord(fileId, fileMd5, completeFile.length);
 
             System.out.println("File merged and uploaded successfully with fileId=" + fileId);
 

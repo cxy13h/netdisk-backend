@@ -10,6 +10,7 @@ import com.example.netdisk.service.INetdiskFileService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.netdisk.utils.FileUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -36,15 +37,24 @@ public class NetdiskFileServiceImpl extends ServiceImpl<NetdiskFileMapper, Netdi
     /**
      * 处理分片上传逻辑
      */
-    public void processChunkUpload(String fileMd5, int chunkIndex, int totalChunks, MultipartFile file) {
+    public ResponseEntity<String> processChunkUpload(String fileMd5, int chunkIndex, int totalChunks, MultipartFile file) {
         // 检查分片是否已经上传
         if (redisManager.isChunkUploaded(fileMd5, chunkIndex)) {
-            throw new IllegalArgumentException("Chunk already uploaded.");
+            return ResponseEntity.ok("Chunk already uploaded.");
         }
 
         // 发布分片上传任务到消息队列
         fileUploadProducer.publishChunkUploadTask(fileMd5, chunkIndex, totalChunks, file);
+        return ResponseEntity.ok("Chunk upload task submitted.");
+    }
 
+    @Override
+    public void saveFileRecord(String fileId, String md5Hash, long fileSize) {
+        NetdiskFile netdiskFile = new NetdiskFile();
+        netdiskFile.setFileId(fileId);
+        netdiskFile.setFileSize(fileSize);
+        netdiskFile.setMd5Hash(md5Hash);
+        baseMapper.insert(netdiskFile);
     }
 
     @Override

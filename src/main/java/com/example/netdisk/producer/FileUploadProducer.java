@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,7 +32,7 @@ public class FileUploadProducer {
         message.put("totalChunks", totalChunks);
         try {
             // 将分片数据转为字节数组
-            message.put("chunkData", file.getBytes());
+            message.put("chunkData", Base64.getEncoder().encodeToString(file.getBytes()));
         } catch (IOException e) {
             throw new RuntimeException("Failed to read chunk data.", e);
         }

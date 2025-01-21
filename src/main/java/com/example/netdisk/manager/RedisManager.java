@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.Base64;
 import java.util.concurrent.TimeUnit;
 
 @Component
@@ -21,7 +22,7 @@ public class RedisManager {
      */
     public void storeChunk(String fileMd5, int chunkIndex, byte[] chunkData) {
         String key = RedisKeyConstants.buildKey(RedisKeyConstants.UPLOAD, fileMd5, RedisKeyConstants.CHUNK, String.valueOf(chunkIndex));
-        redisTemplate.opsForValue().set(key, chunkData);
+        redisTemplate.opsForValue().set(key, Base64.getEncoder().encodeToString(chunkData));
     }
 
     /**
@@ -32,7 +33,7 @@ public class RedisManager {
      */
     public byte[] getChunkData(String fileMd5, int chunkIndex) {
         String key = RedisKeyConstants.buildKey(RedisKeyConstants.UPLOAD, fileMd5, RedisKeyConstants.CHUNK, String.valueOf(chunkIndex));
-        return (byte[]) redisTemplate.opsForValue().get(key);
+        return Base64.getDecoder().decode((String) redisTemplate.opsForValue().get(key));
     }
 
     /**
@@ -53,7 +54,7 @@ public class RedisManager {
      */
     public boolean isChunkUploaded(String fileMd5, int chunkIndex) {
         String key = RedisKeyConstants.buildKey(RedisKeyConstants.UPLOAD, fileMd5, RedisKeyConstants.UPLOADED_CHUNKS);
-        return Boolean.TRUE.                        equals(redisTemplate.opsForSet().isMember(key, chunkIndex));
+        return Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(key, chunkIndex));
     }
 
     /**

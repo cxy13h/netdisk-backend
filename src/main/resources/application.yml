@@ -6,6 +6,10 @@ minio:
 spring:
     application:
         name: netdisk
+    servlet:
+        multipart:
+            max-file-size: 10MB       # 单个文件最大大小
+            max-request-size: 50MB    # 单次请求最大大小
     datasource:
         driver-class-name: com.mysql.cj.jdbc.Driver
         password: 2120516678

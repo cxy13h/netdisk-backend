@@ -18,6 +18,9 @@ public class TaskCoordinatorService {
     @Autowired
     private FileUploadProducer fileUploadProducer;
 
+    @Autowired
+    private INetdiskFileService iNetdiskFileService;
+
     /**
      * 报告分片已上传
      */
@@ -37,5 +40,9 @@ public class TaskCoordinatorService {
                 }
             }
         }
+    }
+
+    public void reportSaveFileRecord(String fileId, String fileMd5, int size) {
+        iNetdiskFileService.saveFileRecord(fileId, fileMd5, size);
     }
 }

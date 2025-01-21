@@ -26,7 +26,7 @@ public class NetdiskFileController {
     /**
      * 处理分片上传
      */
-    @PostMapping("/chunk")
+    @PostMapping("/uploadChunk")
     public ResponseEntity<String> uploadChunk(
             @RequestParam("fileMd5") String fileMd5,
             @RequestParam("chunkIndex") int chunkIndex,
@@ -35,12 +35,12 @@ public class NetdiskFileController {
         if(iNetdiskFileService.checkFileMD5Exist(fileMd5))
             return ResponseEntity.ok("File already uploaded.");
         try {
-            iNetdiskFileService.processChunkUpload(fileMd5, chunkIndex, totalChunks, file);
-            return ResponseEntity.ok("Chunk upload task submitted.");
+            return iNetdiskFileService.processChunkUpload(fileMd5, chunkIndex, totalChunks, file);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
         }
     }
+
 }
